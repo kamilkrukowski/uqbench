@@ -3,7 +3,7 @@
 import jax.numpy as jnp
 import pytest
 
-from bayescal.evaluation import calibration
+from uqbench.evaluation import calibration
 
 
 def test_expected_calibration_error() -> None:

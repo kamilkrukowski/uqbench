@@ -12,10 +12,10 @@ import numpy as np
 from flax import serialization
 from tqdm import tqdm
 
-from bayescal.config import settings
-from bayescal.data import loaders
-from bayescal.evaluation import calibration
-from bayescal.models import BayesianCNN, CNN, DropoutCNN
+from uqbench.config import settings
+from uqbench.data import loaders
+from uqbench.evaluation import calibration
+from uqbench.models import BayesianCNN, CNN, DropoutCNN
 
 
 def load_model(

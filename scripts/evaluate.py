@@ -9,11 +9,11 @@ import jax.numpy as jnp
 from flax import serialization
 from tqdm import tqdm
 
-from bayescal.config import settings
-from bayescal.data import loaders, preprocessing
-from bayescal.evaluation import calibration
-from bayescal.models import BayesianCNN, CNN, DropoutCNN
-from bayescal.utils import visualization
+from uqbench.config import settings
+from uqbench.data import loaders, preprocessing
+from uqbench.evaluation import calibration
+from uqbench.models import BayesianCNN, CNN, DropoutCNN
+from uqbench.utils import visualization
 
 
 def main() -> None:

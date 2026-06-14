@@ -20,9 +20,9 @@ except ImportError:
         "Install it with: pip install optuna"
     )
 
-from bayescal.models import BayesianFNN, DropoutFNN, FNN
-from bayescal.training import optimizers, trainer
-from bayescal.evaluation import calibration
+from uqbench.models import BayesianFNN, DropoutFNN, FNN
+from uqbench.training import optimizers, trainer
+from uqbench.evaluation import calibration
 
 
 def generate_toy_dataset(n_samples=2000, overlap=0.5, seed=42):

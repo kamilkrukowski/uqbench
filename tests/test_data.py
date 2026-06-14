@@ -3,7 +3,7 @@
 import jax.numpy as jnp
 import pytest
 
-from bayescal.data import loaders, preprocessing
+from uqbench.data import loaders, preprocessing
 
 
 def test_normalize_images() -> None:

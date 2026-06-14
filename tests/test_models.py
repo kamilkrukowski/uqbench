@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from bayescal.models import BayesianCNN, CNN, DropoutCNN
+from uqbench.models import BayesianCNN, CNN, DropoutCNN
 
 
 def test_bayesian_cnn_initialization() -> None:

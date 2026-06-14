@@ -8,10 +8,10 @@ import jax
 import jax.numpy as jnp
 from flax import serialization
 
-from bayescal.config import settings
-from bayescal.data import loaders, preprocessing
-from bayescal.models import BayesianCNN, CNN, DropoutCNN
-from bayescal.training import optimizers, trainer
+from uqbench.config import settings
+from uqbench.data import loaders, preprocessing
+from uqbench.models import BayesianCNN, CNN, DropoutCNN
+from uqbench.training import optimizers, trainer
 
 
 def main() -> None:

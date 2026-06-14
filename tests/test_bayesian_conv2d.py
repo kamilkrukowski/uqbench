@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from flax import linen as nn
 
-from bayescal.models.layers.bayesianconv2d import BayesianConv2D
+from uqbench.models.layers.bayesianconv2d import BayesianConv2D
 
 
 def test_bayesian_conv2d_matches_regular_conv():

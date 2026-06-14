@@ -1,4 +1,4 @@
-# BayesCal: Bayesian Neural Network Calibration Research
+# uqbench: Bayesian Neural Network Calibration Research
 
 ## Project Intent (TL;DR)
 
@@ -86,7 +86,7 @@ The following heuristics summarize when each class of method is typically a good
 ## Project Structure
 
 ```
-bayescal/
+uqbench/
 ├── README.md                 # Project overview and setup instructions
 ├── GOALS.md                  # Project goals and objectives
 ├── pyproject.toml            # Modern Python project configuration
@@ -94,7 +94,7 @@ bayescal/
 ├── .gitignore               # Git ignore patterns
 ├── .env.example            # Example environment variables
 │
-├── bayescal/                # Main package
+├── uqbench/                # Main package
 │   ├── __init__.py
 │   ├── config.py            # Configuration management
 │   │

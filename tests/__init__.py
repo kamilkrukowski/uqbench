@@ -1,2 +1,2 @@
-"""Test suite for BayesCal."""
+"""Test suite for uqbench."""
 

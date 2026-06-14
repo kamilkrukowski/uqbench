@@ -3,9 +3,9 @@
 import argparse
 from pathlib import Path
 
-from bayescal.config import settings
-from bayescal.evaluation import calibration
-from bayescal.utils import visualization
+from uqbench.config import settings
+from uqbench.evaluation import calibration
+from uqbench.utils import visualization
 
 
 def main() -> None:

@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from bayescal.config import settings
+from uqbench.config import settings
 
 
 def main() -> None:
