@@ -1,0 +1,21 @@
+{
+  "model_name": "LaplaceFNN",
+  "model_type": "LaplaceFNN",
+  "prior_precision": 10.0,
+  "num_classes": 2,
+  "hidden_dims": [
+    32,
+    32,
+    32
+  ],
+  "param_keys": [
+    "params/dense_layers_0/bias",
+    "params/dense_layers_0/kernel",
+    "params/dense_layers_1/bias",
+    "params/dense_layers_1/kernel",
+    "params/dense_layers_2/bias",
+    "params/dense_layers_2/kernel",
+    "params/output_layer/bias",
+    "params/output_layer/kernel"
+  ]
+}

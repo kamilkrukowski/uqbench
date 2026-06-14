@@ -1,0 +1,11 @@
+{
+  "model_name": "FNN",
+  "input_shape": [
+    2
+  ],
+  "output_shape": [
+    2
+  ],
+  "framework": "jax/flax",
+  "checkpoint_format": "orbax"
+}

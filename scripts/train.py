@@ -10,7 +10,7 @@ from flax import serialization
 
 from bayescal.config import settings
 from bayescal.data import loaders, preprocessing
-from bayescal.models import bayesian, feedforward
+from bayescal.models import BayesianCNN, CNN, DropoutCNN
 from bayescal.training import optimizers, trainer
 
 
@@ -20,16 +20,9 @@ def main() -> None:
     parser.add_argument(
         "--model-type",
         type=str,
-        choices=["bayesian", "feedforward"],
+        choices=["bayesian", "ffn", "dropout_ffn"],
         default="bayesian",
         help="Type of model to train",
-    )
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        choices=["mnist", "fashion_mnist"],
-        default="mnist",
-        help="Dataset to use",
     )
     parser.add_argument(
         "--epochs",
@@ -61,62 +54,92 @@ def main() -> None:
     # Set random seed
     rng = jax.random.PRNGKey(settings.seed)
 
-    # Load data
-    if args.dataset == "mnist":
-        train_loader = loaders.load_mnist(
-            split="train",
-            batch_size=args.batch_size,
-        )
-    else:
-        train_loader = loaders.load_fashion_mnist(
-            split="train",
-            batch_size=args.batch_size,
-        )
+    # Load data - always use CIFAR-10 for training
+    if settings.downsample_training_factor < 1.0:
+        print(f"Downsampling training data by factor {settings.downsample_training_factor:.2f} (using {settings.downsample_training_factor*100:.1f}% of data)")
+    train_loader = loaders.load_cifar10(
+        split="train",
+        batch_size=args.batch_size,
+        downsample_factor=settings.downsample_training_factor,
+        seed=settings.seed,
+    )
+    input_shape = (32, 32, 3)  # CIFAR-10: height=32, width=32, channels=3
 
     # Initialize model
     if args.model_type == "bayesian":
-        model = bayesian.BayesianMLP(
-            hidden_dims=(settings.hidden_dim,) * settings.num_layers,
+        model = BayesianCNN(
+            conv_layers_config=settings.conv_layers,
+            num_groups=settings.group_norm_groups,
+            num_classes=10,
+            prior_std=settings.prior_std,
+            posterior_std_init=settings.posterior_std_init,
+            beta=settings.beta,
+        )
+    elif args.model_type == "dropout_ffn":
+        model = DropoutCNN(
+            conv_layers_config=settings.conv_layers,
+            num_groups=settings.group_norm_groups,
+            dropout_rate=settings.dropout_rate,
             num_classes=10,
         )
-    else:
-        model = feedforward.FFN(
-            hidden_dims=(settings.hidden_dim,) * settings.num_layers,
+    else:  # feedforward
+        model = CNN(
+            conv_layers_config=settings.conv_layers,
+            num_groups=settings.group_norm_groups,
             num_classes=10,
         )
 
     # Initialize parameters
     rng, init_rng = jax.random.split(rng)
-    params = model.init_params(init_rng, input_shape=(784,))
+    params = model.init_params(init_rng, input_shape=input_shape)
 
-    # Initialize optimizer
+    # Initialize optimizer with gradient clipping for stability
     optimizer = optimizers.get_optimizer(
         learning_rate=args.learning_rate,
         optimizer_type="adam",
+        max_grad_norm=settings.max_grad_norm,
     )
     opt_state = optimizer.init(params)
 
     # Training loop
     final_metrics = {}
-    for epoch in range(args.epochs):
-        rng, epoch_rng = jax.random.split(rng)
-        params, opt_state, metrics = trainer.train_epoch(
-            model,
-            params,
-            opt_state,
-            train_loader,
-            epoch_rng,
-            optimizer,
-        )
-        final_metrics = metrics  # Keep track of final epoch metrics
-        _metrics = {k: f"{v:.3f}" for k, v in metrics.items()}
-        print(f"Epoch {epoch + 1}/{args.epochs}: {_metrics}")
+    # Get beta parameter for Bayesian models (from config or model default)
+    if args.model_type == "bayesian":
+        beta = settings.beta if hasattr(settings, "beta") else getattr(model, "beta", 0.001)
+    else:
+        beta = 1.0
+    # Get n_vi_samples for Bayesian models
+    n_vi_samples = settings.n_vi_samples if args.model_type == "bayesian" else 1
+    
+    completed_epochs = 0
+    interrupted = False
+    try:
+        for epoch in range(args.epochs):
+            rng, epoch_rng = jax.random.split(rng)
+            params, opt_state, metrics = trainer.train_epoch(
+                model,
+                params,
+                opt_state,
+                train_loader,
+                epoch_rng,
+                optimizer,
+                beta=beta,
+                n_vi_samples=n_vi_samples,
+            )
+            final_metrics = metrics  # Keep track of final epoch metrics
+            completed_epochs = epoch + 1
+            _metrics = {k: f"{v:.3f}" for k, v in metrics.items()}
+            print(f"Epoch {epoch + 1}/{args.epochs}: {_metrics}")
+    except KeyboardInterrupt:
+        interrupted = True
+        print(f"\n⚠️  Training interrupted by user after {completed_epochs}/{args.epochs} epochs")
+        print("Saving model before exiting...")
 
-    # Save model
+    # Save model (whether completed or interrupted)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save model parameters
-    model_path = args.output_dir / f"{args.model_type}_{args.dataset}_params.flax"
+    model_path = args.output_dir / f"{args.model_type}_cifar10_params.flax"
     model_bytes = serialization.to_bytes(params)
     model_path.write_bytes(model_bytes)
     print(f"Model parameters saved to {model_path}")
@@ -124,15 +147,20 @@ def main() -> None:
     # Save model metadata
     metadata = {
         "model_type": args.model_type,
-        "dataset": args.dataset,
+        "dataset": "cifar10",
         "epochs": args.epochs,
+        "completed_epochs": completed_epochs,
+        "interrupted": interrupted,
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,
-        "hidden_dims": list((settings.hidden_dim,) * settings.num_layers),
+        "conv_layers_config": [list(layer) for layer in settings.conv_layers],  # CNN architecture: (kx, ky, filters, stride)
+        "num_groups": settings.group_norm_groups,  # GroupNorm groups
+        "dropout_rate": settings.dropout_rate if args.model_type == "dropout_ffn" else None,  # Dropout rate
+        "downsample_training_factor": settings.downsample_training_factor,  # Fraction of training data used
         "num_classes": 10,
-        "final_metrics": {k: float(v) for k, v in final_metrics.items()},
+        "final_metrics": {k: float(v) for k, v in final_metrics.items()} if final_metrics else {},
     }
-    metadata_path = args.output_dir / f"{args.model_type}_{args.dataset}_metadata.json"
+    metadata_path = args.output_dir / f"{args.model_type}_cifar10_metadata.json"
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=2)
     print(f"Model metadata saved to {metadata_path}")

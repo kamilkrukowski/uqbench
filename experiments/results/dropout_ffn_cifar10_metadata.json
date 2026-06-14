@@ -1,0 +1,37 @@
+{
+  "model_type": "dropout_ffn",
+  "dataset": "cifar10",
+  "epochs": 25,
+  "batch_size": 1024,
+  "learning_rate": 0.001,
+  "conv_layers_config": [
+    [
+      6,
+      6,
+      32,
+      3
+    ],
+    [
+      4,
+      4,
+      32,
+      2
+    ],
+    [
+      3,
+      3,
+      32,
+      3
+    ]
+  ],
+  "num_groups": 8,
+  "dropout_rate": 0.2,
+  "downsample_training_factor": 0.1,
+  "num_classes": 10,
+  "final_metrics": {
+    "loss": 1.8488272666931151,
+    "accuracy": 0.31973174810409544,
+    "macro_auroc": 0.8319961249759908,
+    "macro_f1": 0.3790787264963963
+  }
+}

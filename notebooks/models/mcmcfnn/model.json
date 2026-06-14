@@ -1,0 +1,66 @@
+{
+  "model_name": "MCMCFNN",
+  "model_type": "MCMCFNN",
+  "hidden_dims": [
+    32,
+    32,
+    32
+  ],
+  "num_classes": 2,
+  "prior_std": 0.1,
+  "num_samples": 50,
+  "param_structure": {
+    "Dense_0__kernel": {
+      "shape": [
+        2,
+        32
+      ],
+      "dtype": "float32"
+    },
+    "Dense_0__bias": {
+      "shape": [
+        32
+      ],
+      "dtype": "float32"
+    },
+    "Dense_1__kernel": {
+      "shape": [
+        32,
+        32
+      ],
+      "dtype": "float32"
+    },
+    "Dense_1__bias": {
+      "shape": [
+        32
+      ],
+      "dtype": "float32"
+    },
+    "Dense_2__kernel": {
+      "shape": [
+        32,
+        32
+      ],
+      "dtype": "float32"
+    },
+    "Dense_2__bias": {
+      "shape": [
+        32
+      ],
+      "dtype": "float32"
+    },
+    "Dense_3__kernel": {
+      "shape": [
+        32,
+        2
+      ],
+      "dtype": "float32"
+    },
+    "Dense_3__bias": {
+      "shape": [
+        2
+      ],
+      "dtype": "float32"
+    }
+  }
+}

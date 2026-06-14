@@ -1,0 +1,11 @@
+{
+  "model_name": "BayesianFNN",
+  "input_shape": [
+    2
+  ],
+  "output_shape": [
+    2
+  ],
+  "framework": "jax/flax",
+  "checkpoint_format": "orbax"
+}

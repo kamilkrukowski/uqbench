@@ -1,0 +1,29 @@
+{
+  "model_type": "bayesian",
+  "dataset": "cifar10",
+  "epochs": 2000,
+  "completed_epochs": 509,
+  "interrupted": true,
+  "batch_size": 4096,
+  "learning_rate": 0.01,
+  "conv_layers_config": [
+    [
+      4,
+      4,
+      16,
+      8
+    ]
+  ],
+  "num_groups": 1,
+  "dropout_rate": null,
+  "downsample_training_factor": 0.1,
+  "num_classes": 10,
+  "final_metrics": {
+    "accuracy": 0.34185412526130676,
+    "kl_loss": 1384.9788818359375,
+    "likelihood_loss": 1.772369921207428,
+    "loss": 1.8416188955307007,
+    "macro_auroc": 0.7981872765382028,
+    "macro_f1": 0.2918136986739383
+  }
+}

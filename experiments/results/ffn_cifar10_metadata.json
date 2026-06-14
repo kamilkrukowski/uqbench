@@ -1,0 +1,27 @@
+{
+  "model_type": "ffn",
+  "dataset": "cifar10",
+  "epochs": 2000,
+  "completed_epochs": 225,
+  "interrupted": true,
+  "batch_size": 4096,
+  "learning_rate": 0.01,
+  "conv_layers_config": [
+    [
+      4,
+      4,
+      16,
+      4
+    ]
+  ],
+  "num_groups": 1,
+  "dropout_rate": null,
+  "downsample_training_factor": 0.1,
+  "num_classes": 10,
+  "final_metrics": {
+    "accuracy": 0.37010206282138824,
+    "loss": 1.7165504693984985,
+    "macro_auroc": 0.8214925493386837,
+    "macro_f1": 0.3694372032414854
+  }
+}

@@ -1,10 +1,57 @@
 """Utilities for toy dataset generation, analysis and visualization."""
 
+import hashlib
+import json
 from collections.abc import Callable
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import multivariate_normal
+
+# Default cache directory (relative to working directory)
+_DEFAULT_CACHE_DIR = Path(".cache/datasets")
+
+
+def _get_cache_key(
+    n_samples: int,
+    x_range: tuple[float, float],
+    y_range: tuple[float, float],
+    min_prob: float,
+    max_prob: float,
+    frequency: float,
+    amplitude: float,
+    seed: int,
+) -> str:
+    """Generate a unique cache key from dataset parameters."""
+    params = {
+        "n_samples": n_samples,
+        "x_range": list(x_range),
+        "y_range": list(y_range),
+        "min_prob": min_prob,
+        "max_prob": max_prob,
+        "frequency": frequency,
+        "amplitude": amplitude,
+        "seed": seed,
+    }
+    params_str = json.dumps(params, sort_keys=True)
+    return hashlib.md5(params_str.encode()).hexdigest()[:12]
+
+
+def _make_prob_func(
+    min_prob: float, max_prob: float, frequency: float, amplitude: float
+) -> Callable[[float, float], float]:
+    """Create the probability function (can't be cached, recreated on load)."""
+
+    def prob_class1(x: float, y: float) -> float:
+        """Compute P(class=1 | x, y) = σ(f(x, y)) bounded to [min_prob, max_prob]."""
+        r = np.sqrt(x**2 + y**2)
+        logit = amplitude * np.sin(frequency * r)
+        prob_sigmoid = 1.0 / (1.0 + np.exp(-logit))
+        prob = min_prob + (max_prob - min_prob) * prob_sigmoid
+        return np.clip(prob, min_prob, max_prob)
+
+    return prob_class1
 
 
 def generate_concentric_rings_dataset(
@@ -16,6 +63,8 @@ def generate_concentric_rings_dataset(
     frequency: float = 1.8,
     amplitude: float = 3.0,
     seed: int = 42,
+    cache_dir: Path | str | None = None,
+    use_cache: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, Callable[[float, float], float]]:
     """
     Generate a 2D dataset with concentric ring probability patterns.
@@ -26,6 +75,9 @@ def generate_concentric_rings_dataset(
     The probability field is: p(x,y) = σ(amplitude * sin(frequency * r))
     where r = sqrt(x² + y²) and σ is the sigmoid function.
 
+    **Caching**: Results are cached to disk based on parameters. Subsequent calls
+    with the same parameters will load from cache instead of regenerating.
+
     Args:
         n_samples: Number of samples to generate
         x_range: (x_min, x_max) range for x coordinates
@@ -35,6 +87,8 @@ def generate_concentric_rings_dataset(
         frequency: Controls ring spacing (higher = thinner rings)
         amplitude: Controls sharpness of transitions (higher = sharper)
         seed: Random seed for reproducibility
+        cache_dir: Directory for caching datasets. Defaults to .cache/datasets/
+        use_cache: Whether to use caching (default True)
 
     Returns:
         X: Features of shape (n_samples, 2)
@@ -47,21 +101,33 @@ def generate_concentric_rings_dataset(
         >>> print(X.shape, y.shape)
         (1000, 2) (1000,)
     """
+    # Set up cache directory
+    if cache_dir is None:
+        cache_dir = _DEFAULT_CACHE_DIR
+    cache_dir = Path(cache_dir)
+
+    # Generate cache key from parameters
+    cache_key = _get_cache_key(
+        n_samples, x_range, y_range, min_prob, max_prob, frequency, amplitude, seed
+    )
+    cache_file = cache_dir / f"concentric_rings_{cache_key}.npz"
+
+    # Create the probability function (always needed, can't be cached)
+    prob_func = _make_prob_func(min_prob, max_prob, frequency, amplitude)
+
+    # Try to load from cache
+    if use_cache and cache_file.exists():
+        data = np.load(cache_file)
+        X = data["X"]
+        y = data["y"]
+        y_onehot = data["y_onehot"]
+        print(f"Loaded dataset from cache: {cache_file}")
+        return X, y, y_onehot, prob_func
+
+    # Generate fresh dataset
     np.random.seed(seed)
     x_min, x_max = x_range
     y_min, y_max = y_range
-
-    def logit_field(x: float, y: float) -> float:
-        """Compute the logit field f(x, y) with clean concentric rings."""
-        r = np.sqrt(x**2 + y**2)
-        return amplitude * np.sin(frequency * r)
-
-    def prob_class1(x: float, y: float) -> float:
-        """Compute P(class=1 | x, y) = σ(f(x, y)) bounded to [min_prob, max_prob]."""
-        logit = logit_field(x, y)
-        prob_sigmoid = 1.0 / (1.0 + np.exp(-logit))
-        prob = min_prob + (max_prob - min_prob) * prob_sigmoid
-        return np.clip(prob, min_prob, max_prob)
 
     # Generate points uniformly in the box
     margin_x = 0.05 * (x_max - x_min)
@@ -76,7 +142,7 @@ def generate_concentric_rings_dataset(
         X.append([x, y])
 
         # Sample label from Bernoulli distribution
-        prob = prob_class1(x, y)
+        prob = prob_func(x, y)
         label = np.random.binomial(1, prob)
         y_labels.append(label)
 
@@ -92,7 +158,13 @@ def generate_concentric_rings_dataset(
     y_onehot = np.zeros((len(y), 2))
     y_onehot[np.arange(len(y)), y] = 1
 
-    return X, y, y_onehot, prob_class1
+    # Save to cache
+    if use_cache:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        np.savez(cache_file, X=X, y=y, y_onehot=y_onehot)
+        print(f"Saved dataset to cache: {cache_file}")
+
+    return X, y, y_onehot, prob_func
 
 
 def compute_bayes_optimal_boundary(

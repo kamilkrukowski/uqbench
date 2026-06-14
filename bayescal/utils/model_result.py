@@ -160,3 +160,4 @@ class ModelResult:
             f"ModelResult(name='{self.name}', n_samples={self.n_samples}, "
             f"evaluated={evaluated})"
         )
+

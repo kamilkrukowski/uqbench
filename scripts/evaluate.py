@@ -12,7 +12,7 @@ from tqdm import tqdm
 from bayescal.config import settings
 from bayescal.data import loaders, preprocessing
 from bayescal.evaluation import calibration
-from bayescal.models import bayesian, feedforward
+from bayescal.models import BayesianCNN, CNN, DropoutCNN
 from bayescal.utils import visualization
 
 
@@ -28,9 +28,9 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["mnist", "fashion_mnist"],
-        default="mnist",
-        help="Dataset to evaluate on",
+        choices=["cifar10", "cifar100"],
+        default="cifar10",
+        help="Dataset to evaluate on (cifar10 for in-distribution, cifar100 for OOD)",
     )
     parser.add_argument(
         "--batch-size",
@@ -41,7 +41,7 @@ def main() -> None:
     parser.add_argument(
         "--n-samples",
         type=int,
-        default=512,
+        default=32,
         help="Number of Monte Carlo samples for Bayesian models (use >1 for uncertainty estimation)",
     )
     parser.add_argument(
@@ -101,38 +101,70 @@ def main() -> None:
         metadata = json.load(f)
 
     # Load test data
-    if args.dataset == "mnist":
-        test_loader = loaders.load_mnist(
+    if args.dataset == "cifar10":
+        test_loader = loaders.load_cifar10(
             split="test",
             shuffle=False,
             batch_size=args.batch_size,
         )
-    else:
-        test_loader = loaders.load_fashion_mnist(
+        input_shape = (32, 32, 3)  # CIFAR-10: height=32, width=32, channels=3
+    else:  # cifar100 for OOD evaluation
+        test_loader = loaders.load_cifar100(
             split="test",
             shuffle=False,
             batch_size=args.batch_size,
         )
+        input_shape = (32, 32, 3)  # CIFAR-100: height=32, width=32, channels=3
 
     # Reconstruct model
     model_type = metadata["model_type"]
-    hidden_dims = tuple(metadata["hidden_dims"])
     num_classes = metadata["num_classes"]
     
+    # Support new conv_layers_config format and legacy formats
+    if "conv_layers_config" in metadata:
+        conv_layers_config = tuple(tuple(layer) for layer in metadata["conv_layers_config"])
+    elif "num_filters" in metadata:
+        # Legacy: convert num_filters to conv_layers_config
+        num_filters = tuple(metadata["num_filters"])
+        conv_stride = tuple(metadata.get("conv_stride", [1, 1]))
+        # Default to 5x5 kernels
+        conv_layers_config = tuple((5, 5, f, conv_stride[0]) for f in num_filters)
+    elif "hidden_dims" in metadata:
+        # Very old legacy: convert hidden_dims to conv_layers_config
+        hidden_dims = tuple(metadata["hidden_dims"])
+        # Default CNN architecture with 5x5 kernels
+        conv_layers_config = ((5, 5, 32, 1), (5, 5, 64, 1))
+    else:
+        # Default CNN architecture
+        conv_layers_config = ((5, 5, 32, 1), (5, 5, 64, 1))
+    
+    # Get num_groups and dropout_rate from metadata or use defaults
+    num_groups = metadata.get("num_groups", 8)
+    dropout_rate = metadata.get("dropout_rate", 0.2)
+    
     if model_type == "bayesian":
-        model = bayesian.BayesianMLP(
-            hidden_dims=hidden_dims,
+        model = BayesianCNN(
+            conv_layers_config=conv_layers_config,
+            num_groups=num_groups,
             num_classes=num_classes,
         )
-    else:
-        model = feedforward.FFN(
-            hidden_dims=hidden_dims,
+    elif model_type == "dropout_ffn":
+        model = DropoutCNN(
+            conv_layers_config=conv_layers_config,
+            num_groups=num_groups,
+            dropout_rate=dropout_rate,
+            num_classes=num_classes,
+        )
+    else:  # feedforward
+        model = CNN(
+            conv_layers_config=conv_layers_config,
+            num_groups=num_groups,
             num_classes=num_classes,
         )
 
     # Initialize model to get parameter structure, then load saved params
     rng, init_rng = jax.random.split(rng)
-    dummy_params = model.init_params(init_rng, input_shape=(784,))
+    dummy_params = model.init_params(init_rng, input_shape=input_shape)
     
     # Load saved parameters
     if not model_path.exists():
@@ -142,7 +174,7 @@ def main() -> None:
     params = serialization.from_bytes(dummy_params, model_bytes)
 
     print(f"Loaded {model_type} model from {model_path}")
-    print(f"Model config: hidden_dims={hidden_dims}, num_classes={num_classes}")
+    print(f"Model config: conv_layers={conv_layers_config}, num_classes={num_classes}")
 
     # Evaluate model
     all_predictions = []
@@ -154,21 +186,14 @@ def main() -> None:
         rng, batch_rng = jax.random.split(rng)
         
         # Get predictions
-        if model_type == "bayesian":
-            probs = model.apply(
-                params,
-                inputs=inputs,
-                rng=batch_rng,
-                training=False,
-                n_samples=args.n_samples,
-            )
-        else:
-            probs = model.apply(
-                params,
-                inputs=inputs,
-                rng=batch_rng,
-                training=False,
-            )
+        # Both models now support n_samples for Monte Carlo sampling
+        probs = model.apply(
+            params,
+            inputs=inputs,
+            rng=batch_rng,
+            training=False,
+            n_samples=args.n_samples,
+        )
         
         all_predictions.append(probs)
         all_labels.append(labels)
@@ -197,17 +222,24 @@ def main() -> None:
     print(f"Accuracy: {float(accuracy):.4f}")
     print(f"Expected Calibration Error (ECE): {ece:.4f}")
     print(f"Brier Score: {brier:.4f}")
-    if model_type == "bayesian" and args.n_samples > 1:
-        print(f"Monte Carlo Samples: {args.n_samples}")
+    if args.n_samples > 1:
+        if model_type == "bayesian":
+            mc_type = "Bayesian"
+        elif model_type == "dropout_ffn":
+            mc_type = "MC Dropout"
+        else:
+            mc_type = "Samples"  # Traditional CNN doesn't use MC, but n_samples is accepted
+        print(f"{mc_type} Samples: {args.n_samples}")
     print("=" * 50)
     
     # Plot calibration curve
     output_dir = args.output_dir or model_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    plot_name = f"{model_type}_{args.dataset}_calibration_curve.png"
-    if args.n_samples > 1 and model_type == "bayesian":
-        plot_name = f"{model_type}_{args.dataset}_mc{args.n_samples}_calibration_curve.png"
+    dataset_name = args.dataset
+    plot_name = f"{model_type}_{dataset_name}_calibration_curve.png"
+    if args.n_samples > 1:
+        plot_name = f"{model_type}_{dataset_name}_mc{args.n_samples}_calibration_curve.png"
     
     plot_path = output_dir / plot_name
     visualization.plot_calibration_curve(

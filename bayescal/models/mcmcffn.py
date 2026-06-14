@@ -1,10 +1,13 @@
 """MCMC-based Bayesian Feedforward Neural Network using BlackJAX.
 
 Implements Hamiltonian Monte Carlo (HMC) and No-U-Turn Sampler (NUTS)
-for sampling from the true posterior distribution of neural network weights.
+for approximating the posterior distribution of neural network weights.
 
-This provides the "gold standard" Bayesian inference (asymptotically exact)
-but is computationally expensive for large networks.
+When temperature=1.0, approximates the true Bayesian posterior.
+When temperature≠1.0, approximates a tempered posterior (cold when T<1, hot when T>1).
+
+MCMC yields approximate posterior expectations with Monte Carlo error.
+This provides a gold-standard approximation but is computationally expensive for large networks.
 """
 
 from typing import Any, Literal
@@ -20,9 +23,13 @@ class MCMCFNN:
     """
     MCMC-based Bayesian Feedforward Neural Network.
 
-    Uses Hamiltonian Monte Carlo (HMC) or NUTS to sample from the posterior
-    distribution of network weights. This is computationally expensive but
-    provides asymptotically exact Bayesian inference.
+    Uses Hamiltonian Monte Carlo (HMC) or NUTS to approximate the posterior
+    distribution of network weights. When temperature=1.0, approximates the true
+    Bayesian posterior. When temperature≠1.0, approximates a tempered posterior.
+    
+    MCMC yields approximate posterior expectations with Monte Carlo error.
+    This is computationally expensive but provides a gold-standard approximation
+    of uncertainty.
 
     Best suited for:
     - Small networks (few hundred parameters)
@@ -31,7 +38,7 @@ class MCMCFNN:
 
     Workflow:
     1. Define network architecture and prior
-    2. Run MCMC sampling (HMC/NUTS) on the posterior
+    2. Run MCMC sampling (HMC/NUTS) to approximate the (possibly tempered) posterior
     3. Store posterior samples
     4. At inference: average predictions over posterior samples
     """
@@ -143,7 +150,10 @@ class MCMCFNN:
             template: Parameter structure template
             X: Input data
             y: Labels (one-hot)
-            temperature: Prior temperature (default 1.0 = true posterior).
+            temperature: Prior temperature (default 1.0 approximates true posterior).
+                        When temperature=1.0, approximates the true Bayesian posterior.
+                        When temperature<1.0, approximates a cold posterior (tempered).
+                        When temperature>1.0, approximates a hot posterior (tempered).
                         Use temperature < 1 for cold posterior (matches beta in VI).
 
         Returns:
