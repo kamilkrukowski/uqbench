@@ -26,19 +26,36 @@ In short: the methods that win are the most expensive (MCMC) and the most cost-e
 
 Two overlapping Gaussians, one per class. Lower is better for NLL/Brier/ECE/ACE/AURC; higher is better for Accuracy/OOD-AUROC. `Fwd` = forward passes per prediction (inference cost).
 
+| Method | Accuracy | NLL | ECE | AURC | OOD-AUROC | Fwd |
+|---|---|---|---|---|---|---|
+| FNN (deterministic) | 0.895 ± 0.006 | 0.350 ± 0.042 | 0.035 ± 0.007 | 0.036 ± 0.004 | 0.262 ± 0.016 | 1 |
+| TemperatureScaled | 0.895 ± 0.006 | 0.363 ± 0.036 | 0.040 ± 0.014 | 0.036 ± 0.004 | 0.261 ± 0.015 | 1 |
+| **DeepEnsemble** | 0.898 ± 0.004 | 0.296 ± 0.077 | 0.028 ± 0.012 | 0.028 ± 0.007 | 0.296 ± 0.084 | **5** |
+| DropoutFNN (MC) | 0.906 ± 0.008 | 0.241 ± 0.022 | **0.021 ± 0.006** | **0.023 ± 0.006** | 0.282 ± 0.083 | 100 |
+| BayesianFNN (BBB) | 0.903 ± 0.010 | 0.264 ± 0.047 | 0.025 ± 0.005 | 0.025 ± 0.007 | 0.184 ± 0.026 | 100 |
+| LaplaceFNN (last-layer) | 0.895 ± 0.006 | 0.296 ± 0.014 | 0.029 ± 0.010 | 0.053 ± 0.008 | 0.353 ± 0.093 | 100 |
+| **MCMCFNN (NUTS)** | 0.906 ± 0.006 | **0.237 ± 0.019** | 0.022 ± 0.007 | **0.023 ± 0.006** | **0.449 ± 0.048** | 150 |
+
+One column per axis: **Accuracy** (discrimination), **NLL** (overall probabilistic quality), **ECE** (calibration), **AURC** (selective prediction), **OOD-AUROC** (OOD detection), **Fwd** (forward passes / inference cost). Lower is better except Accuracy and OOD-AUROC. Reproduce with `python scripts/benchmark_toy.py --seeds 0,1,2,3,4` → writes [`experiments/results/toy_benchmark.json`](experiments/results/toy_benchmark.json).
+
+<details>
+<summary>Full metrics (incl. Brier and ACE)</summary>
+
+Brier corroborates NLL and ACE corroborates ECE — both pairs rank the methods identically, which is why only NLL and ECE appear above.
+
 | Method | Accuracy | NLL | Brier | ECE | ACE | AURC | OOD-AUROC | Fwd |
 |---|---|---|---|---|---|---|---|---|
 | FNN (deterministic) | 0.895 ± 0.006 | 0.350 ± 0.042 | 0.166 ± 0.008 | 0.035 ± 0.007 | 0.037 ± 0.004 | 0.036 ± 0.004 | 0.262 ± 0.016 | 1 |
 | TemperatureScaled | 0.895 ± 0.006 | 0.363 ± 0.036 | 0.168 ± 0.008 | 0.040 ± 0.014 | 0.040 ± 0.008 | 0.036 ± 0.004 | 0.261 ± 0.015 | 1 |
-| **DeepEnsemble** | 0.898 ± 0.004 | 0.296 ± 0.077 | 0.155 ± 0.012 | 0.028 ± 0.012 | 0.034 ± 0.007 | 0.028 ± 0.007 | 0.296 ± 0.084 | **5** |
-| DropoutFNN (MC) | 0.906 ± 0.008 | 0.241 ± 0.022 | 0.141 ± 0.009 | **0.021 ± 0.006** | 0.027 ± 0.009 | **0.023 ± 0.006** | 0.282 ± 0.083 | 100 |
+| DeepEnsemble | 0.898 ± 0.004 | 0.296 ± 0.077 | 0.155 ± 0.012 | 0.028 ± 0.012 | 0.034 ± 0.007 | 0.028 ± 0.007 | 0.296 ± 0.084 | 5 |
+| DropoutFNN (MC) | 0.906 ± 0.008 | 0.241 ± 0.022 | 0.141 ± 0.009 | 0.021 ± 0.006 | 0.027 ± 0.009 | 0.023 ± 0.006 | 0.282 ± 0.083 | 100 |
 | BayesianFNN (BBB) | 0.903 ± 0.010 | 0.264 ± 0.047 | 0.146 ± 0.012 | 0.025 ± 0.005 | 0.025 ± 0.003 | 0.025 ± 0.007 | 0.184 ± 0.026 | 100 |
 | LaplaceFNN (last-layer) | 0.895 ± 0.006 | 0.296 ± 0.014 | 0.167 ± 0.008 | 0.029 ± 0.010 | 0.041 ± 0.007 | 0.053 ± 0.008 | 0.353 ± 0.093 | 100 |
-| **MCMCFNN (NUTS)** | 0.906 ± 0.006 | **0.237 ± 0.019** | **0.140 ± 0.010** | 0.022 ± 0.007 | **0.023 ± 0.006** | **0.023 ± 0.006** | **0.449 ± 0.048** | 150 |
+| MCMCFNN (NUTS) | 0.906 ± 0.006 | 0.237 ± 0.019 | 0.140 ± 0.010 | 0.022 ± 0.007 | 0.023 ± 0.006 | 0.023 ± 0.006 | 0.449 ± 0.048 | 150 |
 
-Reproduce with `python scripts/benchmark_toy.py --seeds 0,1,2,3,4` → writes [`experiments/results/toy_benchmark.json`](experiments/results/toy_benchmark.json).
+**Metric definitions.** NLL & Brier are proper scoring rules (they back up the lossy ECE summary). ECE uses top-label confidence binning (Guo et al. 2017); ACE uses adaptive/quantile bins (Kumar et al. 2019). AURC is the area under the risk–coverage curve (selective prediction). OOD-AUROC separates in-distribution test points from a far-field annulus by predictive entropy.
 
-**Metrics.** NLL & Brier are proper scoring rules (they back up the lossy ECE summary). ECE/MCE use top-label confidence binning (Guo et al. 2017); ACE uses adaptive/quantile bins (Kumar et al. 2019). AURC is the area under the risk–coverage curve (selective prediction). OOD-AUROC separates in-distribution test points from a far-field annulus by predictive entropy.
+</details>
 
 ### Reliability & cost trade-off (toy)
 
