@@ -2,7 +2,7 @@
 
 **A reproducible harness for comparing uncertainty-quantification methods — Bayesian and non-Bayesian — on a common footing.** One interface over seven methods, one metric suite (calibration, proper scoring, selective prediction, OOD detection), multi-seed error bars, and committed results. Built in JAX/Flax with custom Bayesian layers.
 
-The headline cross-method comparison is run on a **controlled 2D task**, where accuracy is pinned near Bayes-optimal so methods separate purely on *uncertainty quality*. A CIFAR-10 → CIFAR-10-C study extends the same metrics to images under distribution shift — currently a *qualitative* demonstration (small, partly-underfit backbones; see caveat below), not a full image benchmark.
+The headline cross-method comparison is run on a **controlled 2D task**, where accuracy is pinned near Bayes-optimal so methods separate purely on *uncertainty quality*. Extending the same suite to image data under distribution shift (CIFAR-10 → CIFAR-10-C) is scoped and in progress — see [Roadmap](#roadmap).
 
 The contribution is the apparatus and the honest cross-method *map* it produces — accuracy / calibration / compute / robustness — not any single method. Scope is explicit on purpose: this is a controlled study and a methodology built to scale to image benchmarks, not a claim of universal method rankings.
 
@@ -81,16 +81,6 @@ P(class 1) over a plane extended well past the training data. Every *learned* me
 
 On the in-distribution test set the calibration curves hug the diagonal (low ECE for most methods); the off-diagonal scatter at low confidence is sparse-bin noise.
 
-### Calibration under distribution shift (CIFAR-10 → CIFAR-10-C)
-
-Following Ovadia et al. 2019 ("Can You Trust Your Model's Uncertainty?"), calibration is evaluated as corruption intensity increases. Calibration curves drift away from the diagonal as Gaussian-noise severity rises from clean → s1 → s3:
-
-| Clean | Gaussian noise s1 | Gaussian noise s3 |
-|---|---|---|
-| ![CIFAR-10 clean](experiments/results/calibration_curves_comparison_cifar10_mc512.png) | ![CIFAR-10-C s1](experiments/results/calibration_curves_comparison_cifar10c_gaussian_noise_s1_mc512.png) | ![CIFAR-10-C s3](experiments/results/calibration_curves_comparison_cifar10c_gaussian_noise_s3_mc512.png) |
-
-> **Caveat (honest):** the CIFAR-10 backbones here are small-capacity convnets trained on a downsampled subset (and some runs were interrupted), so the CIFAR results are a *qualitative shift demonstration*, not a headline accuracy benchmark. The quantitative cross-method comparison is the multi-seed toy table above. Scaling the CIFAR-10/100 backbones to full accuracy is tracked work.
-
 ---
 
 ## Methods
@@ -154,6 +144,7 @@ uqbench/
 
 scripts/
 ├── benchmark_toy.py       # multi-seed runner that produces the results table above
+├── plot_*.py              # figure generators (dataset, pareto, posteriors) from committed JSON
 ├── hyperopt_toy.py        # Optuna hyperparameter optimization
 └── train.py / train_all.py / evaluate_all.py
 experiments/
@@ -162,6 +153,12 @@ experiments/
 notebooks/                 # demos / drivers
 tests/                     # pytest suite for the evaluation metrics
 ```
+
+---
+
+## Roadmap
+
+**Extending to images (in progress).** The metric suite already runs end-to-end on CIFAR-10 → CIFAR-10-C, but the current convolutional backbones are small prototypes trained on a subset (~30–37% accuracy), so calibration on them is not yet a meaningful result. Promoting this to a headline study — competitive CNN backbones (~90%+), the full method matrix, and an Ovadia-style severity-vs-calibration plot — is scoped in **[ROADMAP.md](ROADMAP.md)** and tracked for follow-up commits.
 
 ---
 
