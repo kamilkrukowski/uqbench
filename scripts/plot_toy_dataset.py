@@ -19,7 +19,8 @@ from matplotlib.lines import Line2D
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts.benchmark_toy import far_field_ood, generate_toy_dataset  # noqa: E402
 
-C0, C1 = "#2E86AB", "#F18F01"
+# Perceptually balanced pair (seaborn "deep") so neither class visually dominates.
+C0, C1 = "#4C72B0", "#DD8452"
 
 
 def main() -> None:
@@ -38,7 +39,8 @@ def main() -> None:
     # Single scatter in the generator's already-shuffled order so neither class
     # systematically occludes the other in the overlap region.
     colors = np.where(y == 0, C0, C1)
-    ax.scatter(X[:, 0], X[:, 1], s=14, c=colors, alpha=0.7, zorder=2)
+    ax.scatter(X[:, 0], X[:, 1], s=11, c=colors, alpha=0.55,
+               linewidths=0, zorder=2)
 
     ax.set_aspect("equal")
     ax.set_xlabel("$x_1$")
