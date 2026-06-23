@@ -8,7 +8,7 @@ The contribution is the apparatus and the honest cross-method *map* it produces 
 
 ---
 
-## What we found
+## Key findings
 
 On a controlled 2D classification task (5 seeds), **uncertainty quality is largely decoupled from accuracy** — every method lands at ~0.90 accuracy, but they differ sharply on probabilistic metrics:
 
@@ -79,7 +79,7 @@ Plotting inference cost (forward passes, log scale) against NLL exposes the trad
 
 ### Calibration under distribution shift (CIFAR-10 → CIFAR-10-C)
 
-Following Ovadia et al. 2019 ("Can You Trust Your Model's Uncertainty?"), we evaluate calibration as corruption intensity increases. Calibration curves drift away from the diagonal as Gaussian-noise severity rises from clean → s1 → s3:
+Following Ovadia et al. 2019 ("Can You Trust Your Model's Uncertainty?"), calibration is evaluated as corruption intensity increases. Calibration curves drift away from the diagonal as Gaussian-noise severity rises from clean → s1 → s3:
 
 | Clean | Gaussian noise s1 | Gaussian noise s3 |
 |---|---|---|
