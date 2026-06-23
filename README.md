@@ -155,7 +155,7 @@ scripts/
 experiments/
 ├── results/               # committed metrics (toy_benchmark.json) + calibration figures
 └── hyperopt/              # tuned hyperparameters
-notebooks/                 # demos / drivers (excluded from GitHub language stats)
+notebooks/                 # demos / drivers
 tests/                     # pytest suite for the evaluation metrics
 ```
 
