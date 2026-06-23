@@ -57,15 +57,17 @@ Brier corroborates NLL and ACE corroborates ECE — both pairs rank the methods 
 
 </details>
 
-### Reliability & cost trade-off (toy)
+### Cost vs. quality frontier (toy)
 
-| Calibration curves | Accuracy-vs-compute frontier |
+![Pareto frontier](experiments/results/pareto_frontier_toy.png)
+
+Plotting inference cost (forward passes, log scale) against NLL exposes the trade-off directly. The non-dominated frontier is **FNN → DeepEnsemble → MC-Dropout → MCMC** — and the three approximate-Bayesian / post-hoc methods (**Bayes-by-Backprop, last-layer Laplace, temperature scaling**) are all *dominated*: another method is at least as good on NLL for equal-or-lower cost. Deep ensembles sit at the elbow — most of the sampling-method gain at 5 passes instead of 100+. Regenerate with `python scripts/plot_pareto.py`.
+
+### Reliability (toy)
+
+| Calibration curves | Predictive posterior |
 |---|---|
-| ![Calibration curves](notebooks/figures/calibration_curves_comparison.png) | ![Pareto frontier](notebooks/figures/pareto_frontier.png) |
-
-Predictive-posterior comparison across methods:
-
-![Predictive posterior comparison](notebooks/figures/predictive_posterior_comparison.png)
+| ![Calibration curves](notebooks/figures/calibration_curves_comparison.png) | ![Predictive posterior comparison](notebooks/figures/predictive_posterior_comparison.png) |
 
 ### Calibration under distribution shift (CIFAR-10 → CIFAR-10-C)
 
