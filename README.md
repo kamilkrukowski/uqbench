@@ -22,6 +22,12 @@ In short: the methods that win are the most expensive (MCMC) and the most cost-e
 
 ## Results
 
+### The task
+
+<img src="experiments/results/toy_dataset.png" alt="Toy dataset" width="440">
+
+A controlled 2D binary classification task: two overlapping Gaussians, one per class. The overlap caps achievable accuracy near the Bayes-optimal ~0.90 — which is exactly why the methods separate on *uncertainty quality* rather than accuracy. The gray ring is the far-field OOD set used for the OOD-AUROC column: points the model should be uncertain about but (per the table) generally isn't. Regenerate with `python scripts/plot_toy_dataset.py`.
+
 ### Toy 2D benchmark — mean ± std over 5 seeds
 
 Two overlapping Gaussians, one per class. Lower is better for NLL/Brier/ECE/ACE/AURC; higher is better for Accuracy/OOD-AUROC. `Fwd` = forward passes per prediction (inference cost).
