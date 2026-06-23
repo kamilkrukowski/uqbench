@@ -1,8 +1,10 @@
 # uqbench
 
-**A calibration & uncertainty-quantification benchmark across Bayesian and non-Bayesian methods, under distribution shift.** Built in JAX/Flax, with custom Bayesian layers, a unified method registry, and committed, reproducible results.
+**A reproducible harness for comparing uncertainty-quantification methods — Bayesian and non-Bayesian — on a common footing.** One interface over seven methods, one metric suite (calibration, proper scoring, selective prediction, OOD detection), multi-seed error bars, and committed results. Built in JAX/Flax with custom Bayesian layers.
 
-The contribution is not any single method — it is the honest cross-method *map* of the accuracy / calibration / compute / robustness trade-off.
+The headline cross-method comparison is run on a **controlled 2D task**, where accuracy is pinned near Bayes-optimal so methods separate purely on *uncertainty quality*. A CIFAR-10 → CIFAR-10-C study extends the same metrics to images under distribution shift — currently a *qualitative* demonstration (small, partly-underfit backbones; see caveat below), not a full image benchmark.
+
+The contribution is the apparatus and the honest cross-method *map* it produces — accuracy / calibration / compute / robustness — not any single method. Scope is explicit on purpose: this is a controlled study and a methodology built to scale to image benchmarks, not a claim of universal method rankings.
 
 ---
 
