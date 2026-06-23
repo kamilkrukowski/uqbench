@@ -13,9 +13,13 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts.benchmark_toy import far_field_ood, generate_toy_dataset  # noqa: E402
+
+C0, C1 = "#2E86AB", "#F18F01"
 
 
 def main() -> None:
@@ -30,17 +34,22 @@ def main() -> None:
 
     fig, ax = plt.subplots(figsize=(7, 7))
     ax.scatter(X_ood[:, 0], X_ood[:, 1], s=12, c="0.6", marker="x",
-               alpha=0.6, label="Far-field OOD set", zorder=1)
-    ax.scatter(X[y == 0, 0], X[y == 0, 1], s=14, c="#2E86AB", alpha=0.7,
-               label="Class 0 (ID)", zorder=2)
-    ax.scatter(X[y == 1, 0], X[y == 1, 1], s=14, c="#F18F01", alpha=0.7,
-               label="Class 1 (ID)", zorder=2)
+               alpha=0.6, zorder=1)
+    # Single scatter in the generator's already-shuffled order so neither class
+    # systematically occludes the other in the overlap region.
+    colors = np.where(y == 0, C0, C1)
+    ax.scatter(X[:, 0], X[:, 1], s=14, c=colors, alpha=0.7, zorder=2)
 
     ax.set_aspect("equal")
     ax.set_xlabel("$x_1$")
     ax.set_ylabel("$x_2$")
     ax.set_title("Toy task: two overlapping Gaussians (ID) + far-field OOD set")
-    ax.legend(loc="upper left", framealpha=0.9)
+    handles = [
+        Line2D([0], [0], marker="x", color="0.6", linestyle="None", label="Far-field OOD set"),
+        Line2D([0], [0], marker="o", color=C0, linestyle="None", label="Class 0 (ID)"),
+        Line2D([0], [0], marker="o", color=C1, linestyle="None", label="Class 1 (ID)"),
+    ]
+    ax.legend(handles=handles, loc="upper left", framealpha=0.9)
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
 
