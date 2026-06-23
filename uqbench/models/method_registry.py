@@ -334,6 +334,37 @@ def inference_cost_tempscaled_fnn(cfg: dict[str, Any]) -> dict[str, Any]:
     return {"forward_passes_per_example": 1}
 
 
+# DeepEnsemble
+def train_deep_ensemble(cfg: dict[str, Any], data: dict[str, Any], rng: jax.random.PRNGKey) -> dict[str, Any]:
+    """Train an ensemble of independently-seeded deterministic FNNs."""
+    n_members = cfg.get("n_members", 5)
+    base_seed = cfg.get("seed", 42)
+    model = FNN(hidden_dims=cfg["hidden_dims"], num_classes=cfg["num_classes"], dropout_rate=0.0)
+    members = []
+    for i in range(n_members):
+        params, _ = _shared_train_loop(
+            model, f"DeepEnsemble[{i}]", data["X_train"], data["y_train_onehot"],
+            epochs=cfg.get("epochs", 200), lr=cfg.get("lr", 0.01),
+            seed=base_seed + 1000 * (i + 1), verbose=False,
+        )
+        members.append(params)
+    return {"model": model, "members": members, "params": {}, "history": {}}
+
+
+def predict_proba_deep_ensemble(artifact: dict[str, Any], X: np.ndarray, cfg: dict[str, Any], rng: jax.random.PRNGKey) -> jnp.ndarray:
+    """Predict by averaging member softmax outputs (one forward pass per member)."""
+    member_probs = [
+        artifact["model"].apply(params, inputs=jnp.array(X), rng=rng, training=False, n_samples=1)
+        for params in artifact["members"]
+    ]
+    return jnp.mean(jnp.stack(member_probs), axis=0)
+
+
+def inference_cost_deep_ensemble(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Inference cost for deep ensemble."""
+    return {"forward_passes_per_example": cfg.get("n_members", 5)}
+
+
 # Method registry
 METHODS = {
     "FNN": {
@@ -377,5 +408,12 @@ METHODS = {
         "inference_cost": inference_cost_tempscaled_fnn,
         "color": "#F77F00",
         "marker": "p",
+    },
+    "DeepEnsemble": {
+        "train": train_deep_ensemble,
+        "predict_proba": predict_proba_deep_ensemble,
+        "inference_cost": inference_cost_deep_ensemble,
+        "color": "#E63946",
+        "marker": "*",
     },
 }

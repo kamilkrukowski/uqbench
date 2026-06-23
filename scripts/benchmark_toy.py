@@ -1,13 +1,13 @@
-"""Run the full method matrix on the 2D toy dataset and emit a metrics table.
+"""Run the full method matrix on the 2D toy dataset across seeds.
 
 Trains every method in the registry on a controlled 2D two-Gaussian
-classification task, then reports accuracy, proper scoring rules (NLL, Brier),
-calibration (ECE, ACE), selective prediction (AURC), and OOD detection
-(AUROC against a far-field OOD set). Results are written to JSON and printed
-as a Markdown table for the README.
+classification task, repeated over several seeds, and reports mean +/- std
+for accuracy, proper scoring rules (NLL, Brier), calibration (ECE, ACE),
+selective prediction (AURC), and OOD detection (AUROC against a far-field
+OOD set). Results are written to JSON and printed as a Markdown table.
 
 Usage:
-    python scripts/benchmark_toy.py --output experiments/results/toy_benchmark.json
+    python scripts/benchmark_toy.py --seeds 0,1,2,3,4
 """
 
 import argparse
@@ -84,64 +84,83 @@ CONFIGS = {
     },
     "LaplaceFNN": {"epochs": 200, "lr": 0.01, "prior_precision": 10.0,
                    "subset_size": 1000, "n_samples": 100},
-    "MCMCFNN": {"prior_std": 0.1, "temperature": 0.05, "num_warmup": 200,
-                "num_samples": 200, "sampler": "nuts", "n_samples": 200},
+    "MCMCFNN": {"prior_std": 0.1, "temperature": 0.05, "num_warmup": 150,
+                "num_samples": 150, "sampler": "nuts", "n_samples": 150},
     "TemperatureScaledFNN": {"epochs": 200, "lr": 0.01, "max_iter": 1000},
+    "DeepEnsemble": {"epochs": 200, "lr": 0.01, "n_members": 5},
 }
+
+METRICS = ["accuracy", "nll", "brier", "ece", "ace", "aurc", "ood_auroc"]
+
+
+def run_seed(seed: int) -> dict[str, dict[str, float]]:
+    """Train and evaluate every method for one seed."""
+    X, y, y_onehot = generate_toy_dataset(seed=seed)
+    X_train, X_test, _, _, y_train_oh, y_test_oh = train_test_split(
+        X, y, y_onehot, test_size=0.3, random_state=seed, stratify=y
+    )
+    data = {"X_train": X_train, "y_train_onehot": y_train_oh}
+    X_ood = far_field_ood(len(X_test), seed=seed + 1)
+    y_test = jnp.array(y_test_oh)
+
+    out: dict[str, dict[str, float]] = {}
+    for name, spec in METHODS.items():
+        cfg = {"hidden_dims": HIDDEN, "num_classes": 2, "seed": seed}
+        cfg.update(CONFIGS[name])
+        rng = jax.random.PRNGKey(seed)
+        rng, train_rng, pred_rng, ood_rng = jax.random.split(rng, 4)
+        artifact = spec["train"](cfg, data, train_rng)
+        probs = spec["predict_proba"](artifact, X_test, cfg, pred_rng)
+        probs_ood = spec["predict_proba"](artifact, X_ood, cfg, ood_rng)
+        out[name] = {
+            "accuracy": float((jnp.argmax(probs, axis=1) == jnp.argmax(y_test, axis=1)).mean()),
+            "nll": nll(probs, y_test),
+            "brier": calibration.brier_score(probs, y_test),
+            "ece": calibration.expected_calibration_error(probs, y_test),
+            "ace": calibration.adaptive_calibration_error(probs, y_test),
+            "aurc": aurc(probs, y_test),
+            "ood_auroc": ood_auroc(probs, probs_ood),
+            "fwd_passes": float(spec["inference_cost"](cfg)["forward_passes_per_example"]),
+        }
+    return out
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path,
                         default=Path("experiments/results/toy_benchmark.json"))
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seeds", type=str, default="0,1,2,3,4")
     args = parser.parse_args()
+    seeds = [int(s) for s in args.seeds.split(",")]
 
-    X, y, y_onehot = generate_toy_dataset(seed=args.seed)
-    X_train, X_test, _, _, y_train_oh, y_test_oh = train_test_split(
-        X, y, y_onehot, test_size=0.3, random_state=args.seed, stratify=y
-    )
-    data = {"X_train": X_train, "y_train_onehot": y_train_oh}
-    X_ood = far_field_ood(len(X_test), seed=args.seed + 1)
+    raw: dict[str, dict[str, list[float]]] = {
+        name: {m: [] for m in METRICS + ["fwd_passes"]} for name in METHODS
+    }
+    for seed in seeds:
+        print(f"=== seed {seed} ===", flush=True)
+        for name, metrics in run_seed(seed).items():
+            for m, v in metrics.items():
+                raw[name][m].append(v)
+            print(f"  {name}: " + ", ".join(f"{m}={metrics[m]:.4f}" for m in METRICS), flush=True)
 
-    print(f"Train: {len(X_train)}, Test: {len(X_test)}, OOD: {len(X_ood)}\n")
-
-    rows: dict[str, dict[str, float]] = {}
-    for name, spec in METHODS.items():
-        cfg = {"hidden_dims": HIDDEN, "num_classes": 2, "seed": args.seed}
-        cfg.update(CONFIGS[name])
-        print(f"=== {name} ===")
-        rng = jax.random.PRNGKey(args.seed)
-        rng, train_rng, pred_rng, ood_rng = jax.random.split(rng, 4)
-
-        artifact = spec["train"](cfg, data, train_rng)
-        probs = spec["predict_proba"](artifact, X_test, cfg, pred_rng)
-        probs_ood = spec["predict_proba"](artifact, X_ood, cfg, ood_rng)
-
-        acc = float((jnp.argmax(probs, axis=1) == jnp.argmax(y_test_oh, axis=1)).mean())
-        rows[name] = {
-            "accuracy": acc,
-            "nll": nll(probs, jnp.array(y_test_oh)),
-            "brier": calibration.brier_score(probs, jnp.array(y_test_oh)),
-            "ece": calibration.expected_calibration_error(probs, jnp.array(y_test_oh)),
-            "ace": calibration.adaptive_calibration_error(probs, jnp.array(y_test_oh)),
-            "aurc": aurc(probs, jnp.array(y_test_oh)),
-            "ood_auroc": ood_auroc(probs, probs_ood),
-            "fwd_passes": spec["inference_cost"](cfg)["forward_passes_per_example"],
-        }
-        print({k: round(v, 4) for k, v in rows[name].items()}, "\n")
+    summary = {
+        name: {m: {"mean": float(np.mean(vals)), "std": float(np.std(vals))}
+               for m, vals in mdict.items()}
+        for name, mdict in raw.items()
+    }
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
-        json.dump({"dataset": "toy_2gaussian", "seed": args.seed, "results": rows}, f, indent=2)
+        json.dump({"dataset": "toy_2gaussian", "seeds": seeds,
+                   "summary": summary, "raw": raw}, f, indent=2)
 
-    # Markdown table
-    cols = ["accuracy", "nll", "brier", "ece", "ace", "aurc", "ood_auroc", "fwd_passes"]
-    header = "| Method | " + " | ".join(c.upper() for c in cols) + " |"
-    sep = "|" + "---|" * (len(cols) + 1)
+    # Markdown table: mean +/- std
+    header = "| Method | " + " | ".join(m.upper() for m in METRICS) + " | Fwd |"
+    sep = "|" + "---|" * (len(METRICS) + 2)
     print("\n" + header + "\n" + sep)
-    for name, m in rows.items():
-        cells = [f"{m[c]:.4f}" if c != "fwd_passes" else str(int(m[c])) for c in cols]
+    for name in METHODS:
+        cells = [f"{summary[name][m]['mean']:.3f} ± {summary[name][m]['std']:.3f}" for m in METRICS]
+        cells.append(str(int(summary[name]["fwd_passes"]["mean"])))
         print(f"| {name} | " + " | ".join(cells) + " |")
     print(f"\nSaved -> {args.output}")
 
