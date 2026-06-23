@@ -71,11 +71,15 @@ Brier corroborates NLL and ACE corroborates ECE — both pairs rank the methods 
 
 Plotting inference cost (forward passes, log scale) against NLL exposes the trade-off directly. The non-dominated frontier is **FNN → DeepEnsemble → MC-Dropout → MCMC** — and the three approximate-Bayesian / post-hoc methods (**Bayes-by-Backprop, last-layer Laplace, temperature scaling**) are all *dominated*: another method is at least as good on NLL for equal-or-lower cost. Deep ensembles sit at the elbow — most of the sampling-method gain at 5 passes instead of 100+. Regenerate with `python scripts/plot_pareto.py`.
 
-### Reliability (toy)
+### Predictive posteriors & reliability (toy)
 
-| Calibration curves | Predictive posterior |
-|---|---|
-| ![Calibration curves](notebooks/figures/calibration_curves_comparison.png) | ![Predictive posterior comparison](notebooks/figures/predictive_posterior_comparison.png) |
+![Predictive posterior comparison](experiments/results/predictive_posterior_toy.png)
+
+P(class 1) over a plane extended well past the training data. Every *learned* method saturates to confident red/blue far from the data — visibly overconfident off-manifold — while the Bayes-optimal panel keeps a smooth gradient. This is the same failure the OOD-AUROC column quantifies. Regenerate with `python scripts/plot_toy_posteriors.py`.
+
+<img src="experiments/results/calibration_curves_toy.png" alt="Reliability diagram" width="460">
+
+On the in-distribution test set the calibration curves hug the diagonal (low ECE for most methods); the off-diagonal scatter at low confidence is sparse-bin noise.
 
 ### Calibration under distribution shift (CIFAR-10 → CIFAR-10-C)
 
