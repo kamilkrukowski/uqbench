@@ -25,36 +25,18 @@ from uqbench.training import optimizers, trainer
 from uqbench.evaluation import calibration
 
 
-def generate_toy_dataset(n_samples=2000, overlap=0.5, seed=42):
-    """Generate 2D toy dataset with two overlapping Gaussian classes."""
-    np.random.seed(seed)
-    n_per_class = n_samples // 2
-    
-    # Class 0: centered at (-1, -1)
-    mean_0 = np.array([-1.0, -1.0])
-    cov_0 = np.array([[1.0, 0.0], [0.0, 1.0]])
-    X_0 = np.random.multivariate_normal(mean_0, cov_0, n_per_class)
-    y_0 = np.zeros(n_per_class, dtype=int)
-    
-    # Class 1: centered at (1, 1) with controlled overlap
-    mean_1 = np.array([1.0, 1.0])
-    cov_1 = np.array([[1.0 + overlap, 0.0], [0.0, 1.0 + overlap]])
-    X_1 = np.random.multivariate_normal(mean_1, cov_1, n_per_class)
-    y_1 = np.ones(n_per_class, dtype=int)
-    
-    # Combine
-    X = np.vstack([X_0, X_1])
-    y = np.hstack([y_0, y_1])
-    
-    # Shuffle
-    indices = np.random.permutation(len(X))
-    X = X[indices]
-    y = y[indices]
-    
-    # One-hot encode
+def generate_toy_dataset(n_samples=2000, seed=42):
+    """QDA toy: diffuse class-0 Gaussian + tight class-1 Gaussian (equal priors)."""
+    rng = np.random.default_rng(seed)
+    n = n_samples // 2
+    X0 = rng.multivariate_normal([0.0, 0.0], 3.0 * np.eye(2), n)
+    X1 = rng.multivariate_normal([1.0, 1.0], 0.35 * np.eye(2), n)
+    X = np.vstack([X0, X1])
+    y = np.hstack([np.zeros(n, dtype=int), np.ones(n, dtype=int)])
+    perm = rng.permutation(len(X))
+    X, y = X[perm], y[perm]
     y_onehot = np.zeros((len(y), 2))
     y_onehot[np.arange(len(y)), y] = 1
-    
     return X, y, y_onehot
 
 
@@ -296,7 +278,7 @@ def main():
     
     # Generate dataset
     print("Generating toy dataset...")
-    X, y, y_onehot = generate_toy_dataset(n_samples=2000, overlap=0.8, seed=args.seed)
+    X, y, y_onehot = generate_toy_dataset(n_samples=2000, seed=args.seed)
     
     # Split into train/val/test
     X_train, X_temp, y_train, y_temp, y_train_onehot, y_temp_onehot = train_test_split(

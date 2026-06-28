@@ -168,22 +168,19 @@ def generate_concentric_rings_dataset(
 
 
 def compute_bayes_optimal_boundary(
-    overlap: float = 0.8,
-    x_range: tuple[float, float] = (-4, 4),
-    y_range: tuple[float, float] = (-4, 4),
+    x_range: tuple[float, float] = (-6, 6),
+    y_range: tuple[float, float] = (-6, 6),
     n_points: int = 200,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Compute the Bayes optimal decision boundary for two overlapping Gaussians.
+    Compute the Bayes optimal decision boundary for the QDA toy dataset.
 
     For equal priors P(y=0) = P(y=1) = 0.5, the optimal boundary is where:
     log P(x|y=0) = log P(x|y=1)
 
-    Which simplifies to:
-    (x - μ₀)ᵀ Σ₀⁻¹ (x - μ₀) - log|Σ₀| = (x - μ₁)ᵀ Σ₁⁻¹ (x - μ₁) - log|Σ₁|
+    With unequal covariances this boundary is a closed ellipse (QDA boundary).
 
     Args:
-        overlap: Overlap parameter used in dataset generation (must match generate_toy_dataset)
         x_range: (x_min, x_max) for grid
         y_range: (y_min, y_max) for grid
         n_points: Number of points in each dimension for the grid
@@ -193,12 +190,12 @@ def compute_bayes_optimal_boundary(
         grid_x, grid_y: Meshgrid for plotting
         bayes_probs: Array of shape (n_points, n_points) with P(y=1|x) for each grid point
     """
-    # Define the distributions (matching generate_toy_dataset)
-    mean_0 = np.array([-1.0, -1.0])
-    cov_0 = np.array([[1.0, 0.0], [0.0, 1.0]])
+    # QDA distributions matching generate_toy_dataset
+    mean_0 = np.array([0.0, 0.0])
+    cov_0 = np.array([[3.0, 0.0], [0.0, 3.0]])
 
     mean_1 = np.array([1.0, 1.0])
-    cov_1 = np.array([[1.0 + overlap, 0.0], [0.0, 1.0 + overlap]])
+    cov_1 = np.array([[0.35, 0.0], [0.0, 0.35]])
 
     # Create grid
     x = np.linspace(x_range[0], x_range[1], n_points)

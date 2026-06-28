@@ -1,10 +1,11 @@
-"""Run the full method matrix on the 2D toy dataset across seeds.
+"""Run the full method matrix on the 2D QDA toy dataset across seeds.
 
-Trains every method in the registry on a controlled 2D two-Gaussian
-classification task, repeated over several seeds, and reports mean +/- std
-for accuracy, proper scoring rules (NLL, Brier), calibration (ECE, ACE),
-selective prediction (AURC), and OOD detection (AUROC against a far-field
-OOD set). Results are written to JSON and printed as a Markdown table.
+Trains every method in the registry on a controlled 2D QDA classification
+task (diffuse class-0 Gaussian + tight class-1 Gaussian), repeated over
+several seeds, and reports mean +/- std for accuracy, proper scoring rules
+(NLL, Brier), calibration (ECE, ACE), selective prediction (AURC), and OOD
+detection (AUROC against a far-field OOD set). Results are written to JSON
+and printed as a Markdown table.
 
 Usage:
     python scripts/benchmark_toy.py --seeds 0,1,2,3,4
@@ -24,12 +25,16 @@ from uqbench.evaluation import calibration
 from uqbench.models.method_registry import METHODS
 
 
-def generate_toy_dataset(n_samples: int = 2000, overlap: float = 0.5, seed: int = 42):
-    """Two overlapping 2D Gaussians, one per class."""
+def generate_toy_dataset(n_samples: int = 2000, seed: int = 42):
+    """QDA toy: diffuse class-0 Gaussian + tight class-1 Gaussian (equal priors).
+
+    Unequal covariances produce a curved, closed Bayes-optimal boundary —
+    class 1 occupies a compact island inside a diffuse class-0 sea.
+    """
     rng = np.random.default_rng(seed)
     n = n_samples // 2
-    X0 = rng.multivariate_normal([-1.0, -1.0], np.eye(2), n)
-    X1 = rng.multivariate_normal([1.0, 1.0], (1.0 + overlap) * np.eye(2), n)
+    X0 = rng.multivariate_normal([0.0, 0.0], 3.0 * np.eye(2), n)   # diffuse sea
+    X1 = rng.multivariate_normal([1.0, 1.0], 0.35 * np.eye(2), n)  # tight island
     X = np.vstack([X0, X1]).astype(np.float32)
     y = np.hstack([np.zeros(n, dtype=int), np.ones(n, dtype=int)])
     perm = rng.permutation(len(X))

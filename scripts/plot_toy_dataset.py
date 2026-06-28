@@ -1,6 +1,6 @@
-"""Visualize the toy task exactly as benchmark_toy.py generates it.
+"""Visualize the QDA toy task exactly as benchmark_toy.py generates it.
 
-Plots the in-distribution two-Gaussian training data (colored by class)
+Plots the in-distribution data (diffuse class-0 sea + tight class-1 island)
 together with the far-field annulus used as the OOD set for OOD-AUROC, so
 the figure grounds both the classification task and the OOD evaluation.
 
@@ -45,7 +45,7 @@ def main() -> None:
     ax.set_aspect("equal")
     ax.set_xlabel("$x_1$")
     ax.set_ylabel("$x_2$")
-    ax.set_title("Toy task: two overlapping Gaussians (ID) + far-field OOD set")
+    ax.set_title("QDA toy task: diffuse class-0 sea + tight class-1 island (ID) + far-field OOD set")
     handles = [
         Line2D([0], [0], marker="x", color="0.6", linestyle="None", label="Far-field OOD set"),
         Line2D([0], [0], marker="o", color=C0, linestyle="None", label="Class 0 (ID)"),

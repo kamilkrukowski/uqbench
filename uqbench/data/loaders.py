@@ -11,30 +11,23 @@ from uqbench.data import preprocessing
 
 def generate_toy_dataset(
     n_samples: int = 2000,
-    overlap: float = 0.5,
     seed: int = 42,
     filter_high_confidence: bool = True,
     min_prob: float = 0.05,
     max_prob: float = 0.95,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Generate 2D toy dataset with two overlapping Gaussian classes.
+    Generate the 2D QDA toy dataset (diffuse class-0 sea + tight class-1 island).
 
-    This synthetic dataset is useful for:
-    - Testing calibration methods
-    - Visualizing decision boundaries
-    - Understanding uncertainty estimation
-    - Demonstrating Bayesian neural networks
+    Unequal covariances produce a curved, closed Bayes-optimal boundary —
+    class 1 occupies a compact island inside a diffuse class-0 sea.
 
     Args:
         n_samples: Total number of samples (after filtering if filter_high_confidence=True)
-        overlap: Controls overlap between classes (0 = no overlap, 1+ = maximum overlap).
-                Higher values increase the covariance of class 1, creating more overlap.
         seed: Random seed for reproducibility
-        filter_high_confidence: If True, filter out points in regions with very high/low
-                               class probability (keeps only ambiguous regions)
-        min_prob: Minimum probability threshold for filtering (keep points with P(class=1) >= min_prob)
-        max_prob: Maximum probability threshold for filtering (keep points with P(class=1) <= max_prob)
+        filter_high_confidence: If True, keep only points in ambiguous boundary regions
+        min_prob: Lower probability threshold for filtering
+        max_prob: Upper probability threshold for filtering
 
     Returns:
         X: Features of shape (n_samples, 2)
@@ -42,18 +35,18 @@ def generate_toy_dataset(
         y_onehot: One-hot encoded labels of shape (n_samples, 2)
 
     Example:
-        >>> X, y, y_onehot = generate_toy_dataset(n_samples=2000, overlap=0.8, seed=42)
+        >>> X, y, y_onehot = generate_toy_dataset(n_samples=2000, seed=42)
         >>> print(X.shape, y.shape, y_onehot.shape)
         (2000, 2) (2000,) (2000, 2)
     """
     np.random.seed(seed)
 
-    # Define the distributions
-    mean_0 = np.array([-1.0, -1.0])
-    cov_0 = np.array([[1.0, 0.0], [0.0, 1.0]])
+    # QDA: diffuse class 0 + tight class 1
+    mean_0 = np.array([0.0, 0.0])
+    cov_0 = np.array([[3.0, 0.0], [0.0, 3.0]])
 
     mean_1 = np.array([1.0, 1.0])
-    cov_1 = np.array([[1.0 + overlap, 0.0], [0.0, 1.0 + overlap]])
+    cov_1 = np.array([[0.35, 0.0], [0.0, 0.35]])
 
     if filter_high_confidence:
         # Oversample to account for filtering

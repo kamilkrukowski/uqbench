@@ -35,12 +35,12 @@ LABELS = {
 
 
 def analytic_posterior(grid: np.ndarray) -> np.ndarray:
-    """Bayes-optimal P(class 1) for the two-Gaussian generator (equal priors)."""
+    """Bayes-optimal P(class 1) for the QDA generator (equal priors)."""
     def gauss(x, mean, var):
         d = x - mean
         return np.exp(-0.5 * np.sum(d * d, axis=1) / var) / (2 * np.pi * var)
-    p0 = gauss(grid, np.array([-1.0, -1.0]), 1.0)
-    p1 = gauss(grid, np.array([1.0, 1.0]), 1.5)  # cov = (1 + overlap=0.5) * I
+    p0 = gauss(grid, np.array([0.0, 0.0]), 3.0)   # diffuse sea
+    p1 = gauss(grid, np.array([1.0, 1.0]), 0.35)  # tight island
     return p1 / (p0 + p1 + 1e-12)
 
 
@@ -85,7 +85,7 @@ def main() -> None:
         ax.set_title("Ground truth (Bayes-optimal)" if name == "__truth__" else LABELS[name],
                      fontsize=11)
         ax.set_xticks([]); ax.set_yticks([])
-    fig.suptitle("Predictive posterior P(class 1), extended past the data — toy, seed 0", fontsize=13)
+    fig.suptitle("Predictive posterior P(class 1), extended past the data — QDA toy, seed 0", fontsize=13)
     fig.colorbar(cf, ax=axes, fraction=0.025, pad=0.02, label="P(class 1)")
     out1 = args.outdir / "predictive_posterior_toy.png"
     fig.savefig(out1, dpi=120, bbox_inches="tight")
